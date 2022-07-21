@@ -136,7 +136,7 @@ server.port=8080
 java -jar boot-01-helloworld-1.0-SNAPSHOT.jar
 ```
 
-# 06-07、基础入门-SpringBoot-依赖管理特性与自动配置特性
+# 06-07、基础入门篇-SpringBoot-依赖管理特性与自动配置特性
 
 ## 一. 了解自动配置原理
 
@@ -928,3 +928,112 @@ public CharacterEncodingFilter characterEncodingFilter() {
   - 用户去看这个组件是获取的配置文件什么值就去修改。
 
 **xxxxxAutoConfiguration ---> 组件  --->** **xxxxProperties里面拿值  ----> application.properties**
+
+# 16-19、最佳实践-SpringBoot应用如何编写、Lombok简化开发、dev-tools、Spring Initailizr
+
+## 一、最佳实践
+
+- 引入场景依赖
+  - [官方文档](https://docs.spring.io/spring-boot/docs/current/reference/html/using-spring-boot.html#using-boot-starter)
+
+- 查看自动配置了哪些（选做）
+  - 自己分析，引入场景对应的自动配置一般都生效了
+  - 配置文件中debug=true开启自动配置报告。
+    - Negative（不生效）
+    - Positive（生效）
+
+- 是否需要修改
+  - 参照文档修改配置项
+    - [官方文档](https://docs.spring.io/spring-boot/docs/current/reference/html/appendix-application-properties.html#common-application-properties)
+    - 自己分析。xxxxProperties绑定了配置文件的哪些。
+  - 自定义加入或者替换组件
+    - @Bean、@Component…
+  - 自定义器 XXXXXCustomizer；
+  - …
+
+## 二、开发小技巧
+
+### 2.1 Lombok简化开发
+
+简化JavaBean开发
+
+spring boot已经管理Lombok。引入依赖：
+
+```xml
+<dependency>
+     <groupId>org.projectlombok</groupId>
+     <artifactId>lombok</artifactId>
+</dependency>
+```
+
+IDEA中File->Settings->Plugins，搜索安装Lombok插件。
+
+```java
+===============================简化JavaBean开发===================================
+@NoArgsConstructor
+//@AllArgsConstructor
+@Data
+@ToString
+@EqualsAndHashCode
+public class User {
+
+    private String name;
+    private Integer age;
+
+    private Pet pet;
+
+    public User(String name,Integer age){
+        this.name = name;
+        this.age = age;
+    }
+
+
+}
+
+
+
+================================简化日志开发===================================
+@Slf4j
+@RestController
+public class HelloController {
+    @RequestMapping("/hello")
+    public String handle01(@RequestParam("name") String name){
+        log.info("请求进来了....");
+        return "Hello, Spring Boot 2!"+"你好："+name;
+    }
+}
+```
+
+### 2.2 dev-tools
+
+> Spring Boot includes an additional set of tools that can make the application development experience a little more pleasant. The `spring-boot-devtools` module can be included in any project to provide additional development-time features.——[link](https://docs.spring.io/spring-boot/docs/2.3.8.RELEASE/reference/html/using-spring-boot.html#using-boot-devtools)
+>
+> Applications that use `spring-boot-devtools` automatically restart whenever files on the classpath change. This can be a useful feature when working in an IDE, as it gives a very fast feedback loop for code changes. By default, any entry on the classpath that points to a directory is monitored for changes. Note that certain resources, such as static assets and view templates, [do not need to restart the application](https://docs.spring.io/spring-boot/docs/2.3.8.RELEASE/reference/html/using-spring-boot.html#using-boot-devtools-restart-exclude).——[link](https://docs.spring.io/spring-boot/docs/2.3.8.RELEASE/reference/html/using-spring-boot.html#using-boot-devtools-restart)
+>
+> As DevTools monitors classpath resources, the only way to trigger a restart is to update the classpath. The way in which you cause the classpath to be updated depends on the IDE that you are using:
+>
+> In Eclipse, saving a modified file causes the classpath to be updated and triggers a restart.
+> In IntelliJ IDEA, building the project (`Build -> Build Project`)(shortcut: Ctrl+F9) has the same effect.
+
+添加依赖：
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-devtools</artifactId>
+        <optional>true</optional>
+    </dependency>
+</dependencies>
+```
+
+在IDEA中，项目或者页面修改以后：Ctrl+F9。
+
+### 2.3 Spring Initailizr（项目初始化向导）
+
+<img src="SpringBoot2基础教程.assets/image-20220721170107547.png" alt="image-20220721170107547" style="float:left;" />
+
+<img src="SpringBoot2基础教程.assets/image-20220721171840716.png" alt="image-20220721171840716" style="float:left;" />
+
+# 20-21、核心功能篇-配置文件-yaml的用法、自定义类绑定的配置提示
+
