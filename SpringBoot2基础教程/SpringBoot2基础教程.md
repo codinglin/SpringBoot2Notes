@@ -1984,3 +1984,237 @@ protected RequestMappingHandlerMapping createRequestMappingHandlerMapping() {
 }
 ```
 
+# 29-31、请求处理-常用参数注解使用、@RequestAttribute、@MatrixVariable与UrlPathHelper
+
+## 一、普通参数与基本注解
+
+### 1. 注解：
+
+- `@PathVariable` 路径变量
+- `@RequestHeader` 获取请求头
+- `@RequestParam` 获取请求参数（指问号后的参数，url?a=1&b=2）
+- `@CookieValue` 获取Cookie值
+- `@RequestAttribute` 获取request域属性
+- `@RequestBody` 获取请求体[POST]
+- `@MatrixVariable` 矩阵变量
+- `@ModelAttribute`
+
+```java
+@RestController
+public class ParameterTestController {
+
+
+    //  car/2/owner/zhangsan
+    @GetMapping("/car/{id}/owner/{username}")
+    public Map<String,Object> getCar(@PathVariable("id") Integer id,
+                                     @PathVariable("username") String name,
+                                     @PathVariable Map<String,String> pv,
+                                     @RequestHeader("User-Agent") String userAgent,
+                                     @RequestHeader Map<String,String> header,
+                                     @RequestParam("age") Integer age,
+                                     @RequestParam("inters") List<String> inters,
+                                     @RequestParam Map<String,String> params,
+                                     @CookieValue("_ga") String _ga,
+                                     @CookieValue("_ga") Cookie cookie){
+
+        Map<String,Object> map = new HashMap<>();
+
+//        map.put("id",id);
+//        map.put("name",name);
+//        map.put("pv",pv);
+//        map.put("userAgent",userAgent);
+//        map.put("headers",header);
+        map.put("age",age);
+        map.put("inters",inters);
+        map.put("params",params);
+        map.put("_ga",_ga);
+        System.out.println(cookie.getName()+"===>"+cookie.getValue());
+        return map;
+    }
+
+
+    @PostMapping("/save")
+    public Map postMethod(@RequestBody String content){
+        Map<String,Object> map = new HashMap<>();
+        map.put("content",content);
+        return map;
+    }
+}
+```
+
+```java
+@Controller
+public class RequestController {
+
+    @GetMapping("/goto")
+    public String goToPage(HttpServletRequest request){
+
+        request.setAttribute("msg","成功了...");
+        request.setAttribute("code",200);
+        return "forward:/success";  //转发到  /success请求
+    }
+
+    @GetMapping("/params")
+    public String testParam(Map<String,Object> map,
+                            Model model,
+                            HttpServletRequest request,
+                            HttpServletResponse response){
+        map.put("hello","world666");
+        model.addAttribute("world","hello666");
+        request.setAttribute("message","HelloWorld");
+
+        Cookie cookie = new Cookie("c1","v1");
+        response.addCookie(cookie);
+        return "forward:/success";
+    }
+
+    ///<-----------------@RequestAttribute在这个方法
+    @ResponseBody
+    @GetMapping("/success")
+    public Map success(@RequestAttribute(value = "msg",required = false) String msg,
+                       @RequestAttribute(value = "code",required = false)Integer code,
+                       HttpServletRequest request){
+        Object msg1 = request.getAttribute("msg");
+
+        Map<String,Object> map = new HashMap<>();
+        Object hello = request.getAttribute("hello");
+        Object world = request.getAttribute("world");
+        Object message = request.getAttribute("message");
+
+        map.put("reqMethod_msg",msg1);
+        map.put("annotation_msg",msg);
+        map.put("hello",hello);
+        map.put("world",world);
+        map.put("message",message);
+
+        return map;
+    }
+}
+```
+
+语法： 请求路径：/cars/sell;low=34;brand=byd,audi,yd
+
+SpringBoot默认是禁用了矩阵变量的功能
+
+手动开启：原理。对于路径的处理。UrlPathHelper的removeSemicolonContent设置为false，让其支持矩阵变量的。
+矩阵变量必须有url路径变量才能被解析
+
+**手动开启矩阵变量**：
+
+- 实现`WebMvcConfigurer`接口：
+
+  ```java
+  @Configuration(proxyBeanMethods = false)
+  public class WebConfig implements WebMvcConfigurer {
+      @Override
+      public void configurePathMatch(PathMatchConfigurer configurer) {
+  
+          UrlPathHelper urlPathHelper = new UrlPathHelper();
+          // 不移除；后面的内容。矩阵变量功能就可以生效
+          urlPathHelper.setRemoveSemicolonContent(false);
+          configurer.setUrlPathHelper(urlPathHelper);
+      }
+  }
+  ```
+
+- 创建返回`WebMvcConfigurer`
+
+  ```java
+  @Configuration(proxyBeanMethods = false)
+  public class WebConfig{
+      @Bean
+      public WebMvcConfigurer webMvcConfigurer(){
+          return new WebMvcConfigurer() {
+                          @Override
+              public void configurePathMatch(PathMatchConfigurer configurer) {
+                  UrlPathHelper urlPathHelper = new UrlPathHelper();
+                  // 不移除；后面的内容。矩阵变量功能就可以生效
+                  urlPathHelper.setRemoveSemicolonContent(false);
+                  configurer.setUrlPathHelper(urlPathHelper);
+              }
+          }
+      }
+  }
+  ```
+
+**`@MatrixVariable`的用例**
+
+```java
+@RestController
+public class ParameterTestController {
+
+    ///cars/sell;low=34;brand=byd,audi,yd
+    @GetMapping("/cars/{path}")
+    public Map carsSell(@MatrixVariable("low") Integer low,
+                        @MatrixVariable("brand") List<String> brand,
+                        @PathVariable("path") String path){
+        Map<String,Object> map = new HashMap<>();
+
+        map.put("low",low);
+        map.put("brand",brand);
+        map.put("path",path);
+        return map;
+    }
+
+    // /boss/1;age=20/2;age=10
+
+    @GetMapping("/boss/{bossId}/{empId}")
+    public Map boss(@MatrixVariable(value = "age",pathVar = "bossId") Integer bossAge,
+                    @MatrixVariable(value = "age",pathVar = "empId") Integer empAge){
+        Map<String,Object> map = new HashMap<>();
+
+        map.put("bossAge",bossAge);
+        map.put("empAge",empAge);
+        return map;
+
+    }
+}
+```
+
+# 32-36、请求处理-源码分析
+
+## 一、各种类型参数解析原理
+
+从`DispatcherServlet`开始：
+
+```java
+public class DispatcherServlet extends FrameworkServlet {
+    
+    protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        HttpServletRequest processedRequest = request;
+        HandlerExecutionChain mappedHandler = null;
+        boolean multipartRequestParsed = false;
+
+        WebAsyncManager asyncManager = WebAsyncUtils.getAsyncManager(request);
+
+        try {
+            ModelAndView mv = null;
+            Exception dispatchException = null;
+
+            try {
+                processedRequest = checkMultipart(request);
+                multipartRequestParsed = (processedRequest != request);
+
+                // Determine handler for the current request.
+                mappedHandler = getHandler(processedRequest);
+                if (mappedHandler == null) {
+                    noHandlerFound(processedRequest, response);
+                    return;
+                }
+
+                // Determine handler adapter for the current request.
+                HandlerAdapter ha = getHandlerAdapter(mappedHandler.getHandler());
+                ...
+            }
+        }
+    }
+}
+```
+
+- `HandlerMapping`中找到能处理请求的`Handler`（Controller.method()）。
+- 为当前Handler 找一个适配器 `HandlerAdapter`，用的最多的是**RequestMappingHandlerAdapter**。
+- 适配器执行目标方法并确定方法参数的每一个值。
+
+### HandlerAdapter
+
+默认会加载所有`HandlerAdapter`
