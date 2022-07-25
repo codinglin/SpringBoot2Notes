@@ -10,7 +10,7 @@
 
 新添内容（conf/settings.xml）：
 
-<img src="SpringBoot2基础教程.assets/image-20220720105422196.png" alt="image-20220720105422196" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220720105422196.png" alt="image-20220720105422196" style="float:left;" />
 
 ```xml
 <mirrors>
@@ -122,7 +122,7 @@ server.port=8080
 </build>
 ```
 
-<img src="SpringBoot2基础教程.assets/image-20220720113919298.png" alt="image-20220720113919298" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220720113919298.png" alt="image-20220720113919298" style="float:left;" />
 
 把项目打成jar包，直接在目标服务器执行即可。
 
@@ -377,7 +377,7 @@ public class MyConfig {
 
 条件装配：满足Conditional指定的条件，则进行组件注入
 
-<img src="SpringBoot2基础教程.assets/image-20220720155201557.png" alt="image-20220720155201557" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220720155201557.png" alt="image-20220720155201557" style="float:left;" />
 
 ```java
 =====================测试条件装配==========================
@@ -732,7 +732,7 @@ private static Map<String, List<String>> loadSpringFactories(@Nullable ClassLoad
 }
 ```
 
-<img src="SpringBoot2基础教程.assets/image-20220720195010687.png" alt="image-20220720195010687" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220720195010687.png" alt="image-20220720195010687" style="float:left;" />
 
 ```xml
 <!-- 文件里面写死了spring-boot一启动就要给容器中加载的所有配置类 -->
@@ -1031,9 +1031,9 @@ public class HelloController {
 
 ### 2.3 Spring Initailizr（项目初始化向导）
 
-<img src="SpringBoot2基础教程.assets/image-20220721170107547.png" alt="image-20220721170107547" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220721170107547.png" alt="image-20220721170107547" style="float:left;" />
 
-<img src="SpringBoot2基础教程.assets/image-20220721171840716.png" alt="image-20220721171840716" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220721171840716.png" alt="image-20220721171840716" style="float:left;" />
 
 # 20-21、核心功能篇-配置文件-yaml的用法、自定义类绑定的配置提示
 
@@ -1184,7 +1184,7 @@ person:
 
 # 22-24 web场景-web开发简介、静态资源规则与定制化、welcome与favicon功能
 
-<img src="SpringBoot2基础教程.assets/image-20220722115047900.png" alt="image-20220722115047900" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220722115047900.png" alt="image-20220722115047900" style="float:left;" />
 
 ## 一、SpringMVC自动配置概览
 
@@ -1694,7 +1694,7 @@ public class WebConfig {
 
 SpringMVC功能分析都从 `org.springframework.web.servlet.DispatcherServlet` -> `doDispatch()`
 
-<img src="SpringBoot2基础教程.assets/image-20220722162938208.png" alt="image-20220722162938208" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220722162938208.png" alt="image-20220722162938208" style="float:left;" />
 
 ```java
 public abstract class FrameworkServlet extends HttpServletBean implements ApplicationContextAware {	
@@ -1791,7 +1791,7 @@ public class DispatcherServlet extends FrameworkServlet {
 
 详细运行图：
 
-<img src="SpringBoot2基础教程.assets/image-20220722164415744.png" alt="image-20220722164415744" style="zoom:80%;float:left" />
+<img src="SpringBoot2基础上篇.assets/image-20220722164415744.png" alt="image-20220722164415744" style="zoom:80%;float:left" />
 
 **mappedHandler = this.getHandler(processedRequest)**
 
@@ -1814,11 +1814,11 @@ protected HandlerExecutionChain getHandler(HttpServletRequest request) throws Ex
 }
 ```
 
-<img src="SpringBoot2基础教程.assets/image-20220722170017671.png" alt="image-20220722170017671" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220722170017671.png" alt="image-20220722170017671" style="float:left;" />
 
 **RequestMappingHandlerMapping: 保存了所有 @RequestMapping 和 handler 的映射规则**
 
-<img src="SpringBoot2基础教程.assets/image-20220722170442789.png" alt="image-20220722170442789" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220722170442789.png" alt="image-20220722170442789" style="float:left;" />
 
 ```java
 @Nullable
@@ -2278,7 +2278,7 @@ protected HandlerAdapter getHandlerAdapter(Object handler) throws ServletExcepti
 }
 ```
 
-<img src="SpringBoot2基础教程.assets/image-20220725113258591.png" alt="image-20220725113258591" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220725113258591.png" alt="image-20220725113258591" style="float:left;" />
 
 1. 支持方法上标注`@RequestMapping`
 2. 支持函数式编程的
@@ -2380,9 +2380,9 @@ public class RequestMappingHandlerAdapter extends AbstractHandlerMethodAdapter
 
 SpringMVC目标方法能写多少种参数类型。取决于**参数解析器argumentResolvers**。
 
-<img src="SpringBoot2基础教程.assets/image-20220725115211259.png" alt="image-20220725115211259" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220725115211259.png" alt="image-20220725115211259" style="float:left;" />
 
-<img src="SpringBoot2基础教程.assets/image-20220725115606975.png" alt="image-20220725115606975" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220725115606975.png" alt="image-20220725115606975" style="float:left;" />
 
 ```java
 public class HandlerMethodArgumentResolverComposite implements HandlerMethodArgumentResolver {
@@ -2406,7 +2406,7 @@ public class HandlerMethodArgumentResolverComposite implements HandlerMethodArgu
 
 ### 返回值处理器
 
-<img src="SpringBoot2基础教程.assets/image-20220725121141102.png" alt="image-20220725121141102" style="float:left;" />
+<img src="SpringBoot2基础上篇.assets/image-20220725121141102.png" alt="image-20220725121141102" style="float:left;" />
 
 ### 如何确定目标方法每一个参数的值
 
@@ -2827,3 +2827,50 @@ public class ServletRequestMethodArgumentResolver implements HandlerMethodArgume
 - UriComponentsBuilder
 - ServletUriComponentsBuilder
 
+`RequestController`用例
+
+```java
+@GetMapping("/params")
+public String testParam(Map<String,Object> map,
+                        Model model,
+                        HttpServletRequest request,
+                        HttpServletResponse response){
+    map.put("hello","world666");
+    model.addAttribute("world","hello666");
+    request.setAttribute("message","HelloWorld");
+
+    Cookie cookie = new Cookie("c1","v1");
+    response.addCookie(cookie);
+    return "forward:/success";
+} 
+
+
+@ResponseBody
+@GetMapping("/success")
+public Map success(@RequestAttribute(value = "msg",required = false) String msg,
+                   @RequestAttribute(value = "code",required = false)Integer code,
+                   HttpServletRequest request){
+    Object msg1 = request.getAttribute("msg");
+
+    Map<String,Object> map = new HashMap<>();
+    Object hello = request.getAttribute("hello");
+    Object world = request.getAttribute("world");
+    Object message = request.getAttribute("message");
+
+    map.put("reqMethod_msg",msg1);
+    map.put("annotation_msg",msg);
+    map.put("hello",hello);
+    map.put("world",world);
+    map.put("message",message);
+
+    return map;
+}
+```
+
+小结：
+
+- `Map<String,Object> map`
+- `Model model`
+- `HttpServletRequest request`
+
+上面三位都是可以给request域中放数据，用`request.getAttribute()`获取
