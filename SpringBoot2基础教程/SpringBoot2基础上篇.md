@@ -2874,3 +2874,93 @@ public Map success(@RequestAttribute(value = "msg",required = false) String msg,
 - `HttpServletRequest request`
 
 上面三位都是可以给request域中放数据，用`request.getAttribute()`获取
+
+**接下来我们看看，`Map<String,Object> map`与`Model model`用什么参数处理器。**
+
+`Map<String,Object> map`参数用`MapMethodProcessor`处理：
+
+```java
+public class MapMethodProcessor implements HandlerMethodArgumentResolver, HandlerMethodReturnValueHandler {
+
+	@Override
+	public boolean supportsParameter(MethodParameter parameter) {
+		return (Map.class.isAssignableFrom(parameter.getParameterType()) &&
+				parameter.getParameterAnnotations().length == 0);
+	}
+
+	@Override
+	@Nullable
+	public Object resolveArgument(MethodParameter parameter, @Nullable ModelAndViewContainer mavContainer,
+			NativeWebRequest webRequest, @Nullable WebDataBinderFactory binderFactory) throws Exception {
+
+		Assert.state(mavContainer != null, "ModelAndViewContainer is required for model exposure");
+		return mavContainer.getModel();
+	}
+    
+    ...
+    
+}
+```
+
+`mavContainer.getModel()`如下：
+
+```java
+public class ModelAndViewContainer {
+
+    ...
+
+	private final ModelMap defaultModel = new BindingAwareModelMap();
+
+	@Nullable
+	private ModelMap redirectModel;
+
+    ...
+
+	public ModelMap getModel() {
+		if (useDefaultModel()) {
+			return this.defaultModel;
+		}
+		else {
+			if (this.redirectModel == null) {
+				this.redirectModel = new ModelMap();
+			}
+			return this.redirectModel;
+		}
+	}
+    
+    private boolean useDefaultModel() {
+		return (!this.redirectModelScenario || (this.redirectModel == null && !this.ignoreDefaultModelOnRedirect));
+	}
+    ...
+}
+```
+
+`Model model`用`ModelMethodProcessor`处理：
+
+```java
+public class ModelMethodProcessor implements HandlerMethodArgumentResolver, HandlerMethodReturnValueHandler {
+
+	@Override
+	public boolean supportsParameter(MethodParameter parameter) {
+		return Model.class.isAssignableFrom(parameter.getParameterType());
+	}
+
+	@Override
+	@Nullable
+	public Object resolveArgument(MethodParameter parameter, @Nullable ModelAndViewContainer mavContainer,
+			NativeWebRequest webRequest, @Nullable WebDataBinderFactory binderFactory) throws Exception {
+
+		Assert.state(mavContainer != null, "ModelAndViewContainer is required for model exposure");
+		return mavContainer.getModel();
+	}
+    ...
+}
+```
+
+`return mavContainer.getModel();`这跟`MapMethodProcessor`的一致
+
+### 目标方法执行完成
+
+将所有的数据都放在`ModelAndViewContainer`: 包含要去的页面地址View和Model数据。
+
+<img src="SpringBoot2基础上篇.assets/image-20220725161302016.png" alt="image-20220725161302016" style="float:left;" />
