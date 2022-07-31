@@ -1,3 +1,17 @@
+# 前置知识
+
+**正文内容请从05基础入门开始看，以上仅仅作为前置补充**
+
+## 一、IOC
+
+### 1.1、IOC容器
+
+#### 1.1.1、IOC思想
+
+IOC：Inversion of Control，翻译过来是反转控制。
+
+
+
 # 05、基础入门-SpringBoot-HelloWorld
 
 ## 一. 系统要求
@@ -1463,7 +1477,7 @@ final class WelcomePageHandlerMapping extends AbstractUrlHandlerMapping {
 
 这构造方法内的代码也解释了web场景-welcome与favicon功能中配置`static-path-pattern`了，welcome页面和小图标失效的问题。
 
-# 26-36、请求处理-源码分析
+# 26-28、请求处理-源码分析
 
 ## 一、Rest映射及源码解析
 
@@ -2964,3 +2978,290 @@ public class ModelMethodProcessor implements HandlerMethodArgumentResolver, Hand
 将所有的数据都放在`ModelAndViewContainer`: 包含要去的页面地址View和Model数据。
 
 <img src="SpringBoot2基础上篇.assets/image-20220725161302016.png" alt="image-20220725161302016" style="float:left;" />
+
+接下来看看Map<String,Object> map与Model model值是如何做到用request.getAttribute()获取的。
+
+众所周知，所有的数据都放在 ModelAndView包含要去的页面地址View，还包含Model数据。
+
+先看ModelAndView接下来是如何处理的？
+
+```java
+public class DispatcherServlet extends FrameworkServlet {
+    
+    ...
+    
+	protected void doDispatch(HttpServletRequest request, HttpServletResponse response) throws Exception {
+		...
+
+		try {
+			ModelAndView mv = null;
+            
+            ...
+
+			// Actually invoke the handler.
+			mv = ha.handle(processedRequest, response, mappedHandler.getHandler());
+            
+            ...
+            
+			}
+			catch (Exception ex) {
+				dispatchException = ex;
+			}
+			catch (Throwable err) {
+				// As of 4.3, we're processing Errors thrown from handler methods as well,
+				// making them available for @ExceptionHandler methods and other scenarios.
+				dispatchException = new NestedServletException("Handler dispatch failed", err);
+			}
+        	//处理分发结果
+			processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchException);
+		}
+        ...
+
+	}
+
+	private void processDispatchResult(HttpServletRequest request, HttpServletResponse response,
+			@Nullable HandlerExecutionChain mappedHandler, @Nullable ModelAndView mv,
+			@Nullable Exception exception) throws Exception {
+        ...
+
+		// Did the handler return a view to render?
+		if (mv != null && !mv.wasCleared()) {
+			render(mv, request, response);
+			...
+		}
+		...
+	}
+
+	protected void render(ModelAndView mv, HttpServletRequest request, HttpServletResponse response) throws Exception {
+		...
+
+		View view;
+		String viewName = mv.getViewName();
+		if (viewName != null) {
+			// We need to resolve the view name.
+			view = resolveViewName(viewName, mv.getModelInternal(), locale, request);
+			if (view == null) {
+				throw new ServletException("Could not resolve view with name '" + mv.getViewName() +
+						"' in servlet with name '" + getServletName() + "'");
+			}
+		}
+		else {
+			// No need to lookup: the ModelAndView object contains the actual View object.
+			view = mv.getView();
+			if (view == null) {
+				throw new ServletException("ModelAndView [" + mv + "] neither contains a view name nor a " +
+						"View object in servlet with name '" + getServletName() + "'");
+			}
+		}
+		view.render(mv.getModelInternal(), request, response);
+        
+        ...
+	}
+}
+```
+
+```java
+public class InternalResourceView extends AbstractUrlBasedView {
+    
+ 	@Override//该方法在AbstractView，AbstractUrlBasedView继承了AbstractView
+	public void render(@Nullable Map<String, ?> model, HttpServletRequest request,
+			HttpServletResponse response) throws Exception {
+		
+        ...
+        
+		Map<String, Object> mergedModel = createMergedOutputModel(model, request, response);
+		prepareResponse(request, response);
+        
+        //看下一个方法实现
+		renderMergedOutputModel(mergedModel, getRequestToExpose(request), response);
+	}
+    
+    @Override
+	protected void renderMergedOutputModel(
+			Map<String, Object> model, HttpServletRequest request, HttpServletResponse response) throws Exception {
+
+		// Expose the model object as request attributes.
+        // 暴露模型作为请求域属性
+		exposeModelAsRequestAttributes(model, request);//<---重点
+
+		// Expose helpers as request attributes, if any.
+		exposeHelpers(request);
+
+		// Determine the path for the request dispatcher.
+		String dispatcherPath = prepareForRendering(request, response);
+
+		// Obtain a RequestDispatcher for the target resource (typically a JSP).
+		RequestDispatcher rd = getRequestDispatcher(request, dispatcherPath);
+		
+        ...
+	}
+    
+    //该方法在AbstractView，AbstractUrlBasedView继承了AbstractView
+    protected void exposeModelAsRequestAttributes(Map<String, Object> model,
+			HttpServletRequest request) throws Exception {
+
+		model.forEach((name, value) -> {
+			if (value != null) {
+				request.setAttribute(name, value);
+			}
+			else {
+				request.removeAttribute(name);
+			}
+		});
+	}
+    
+}
+```
+
+`exposeModelAsRequestAttributes`方法看出，`Map<String,Object> map`，`Model model`这两种类型数据可以给request域中放数据，用`request.getAttribute()`获取。
+
+## 四、自定义对象参数：
+
+```java
+@RestController
+public class ParameterTestController {
+
+    /**
+     * 数据绑定：页面提交的请求数据（GET、POST）都可以和对象属性进行绑定
+     * @param person
+     * @return
+     */
+    @PostMapping("/saveuser")
+    public Person saveuser(Person person){
+        return person;
+    }
+}
+```
+
+```java
+/**
+ *     姓名： <input name="userName"/> <br/>
+ *     年龄： <input name="age"/> <br/>
+ *     生日： <input name="birth"/> <br/>
+ *     宠物姓名：<input name="pet.name"/><br/>
+ *     宠物年龄：<input name="pet.age"/>
+ */
+@Data
+public class Person {
+    
+    private String userName;
+    private Integer age;
+    private Date birth;
+    private Pet pet;
+    
+}
+
+@Data
+public class Pet {
+
+    private String name;
+    private String age;
+
+}
+```
+
+### POJO封装过程
+
+**ServletModelAttributeMethodProcessor** 这个参数器处理自定义类型参数
+
+```java
+public class ServletModelAttributeMethodProcessor extends ModelAttributeMethodProcessor {
+    @Override // 本方法在ModelAttributeMethodProcessor类，
+	public boolean supportsParameter(MethodParameter parameter) {
+		return (parameter.hasParameterAnnotation(ModelAttribute.class) ||
+				(this.annotationNotRequired && !BeanUtils.isSimpleProperty(parameter.getParameterType())));
+	}
+}
+```
+
+**是否为简单类型。**
+
+```java
+public static boolean isSimpleValueType(Class<?> type) {
+    return (Void.class != type && void.class != type &&
+            (ClassUtils.isPrimitiveOrWrapper(type) ||
+             Enum.class.isAssignableFrom(type) ||
+             CharSequence.class.isAssignableFrom(type) ||
+             Number.class.isAssignableFrom(type) ||
+             Date.class.isAssignableFrom(type) ||
+             Temporal.class.isAssignableFrom(type) ||
+             URI.class == type ||
+             URL.class == type ||
+             Locale.class == type ||
+             Class.class == type));
+}
+```
+
+**WebDataBinder 利用它里面的 Converters 将请求数据转成指定的数据类型。再次封装到JavaBean中**
+
+```java
+public class ServletModelAttributeMethodProcessor extends ModelAttributeMethodProcessor {
+	@Override
+	@Nullable // 本方法在ModelAttributeMethodProcessor类，
+	public final Object resolveArgument(MethodParameter parameter, @Nullable ModelAndViewContainer mavContainer,
+			NativeWebRequest webRequest, @Nullable WebDataBinderFactory binderFactory) throws Exception {
+
+		...
+
+		String name = ModelFactory.getNameForParameter(parameter);
+		ModelAttribute ann = parameter.getParameterAnnotation(ModelAttribute.class);
+		if (ann != null) {
+			mavContainer.setBinding(name, ann.binding());
+		}
+
+		Object attribute = null;
+		BindingResult bindingResult = null;
+
+		if (mavContainer.containsAttribute(name)) {
+			attribute = mavContainer.getModel().get(name);
+		}
+		else {
+			// Create attribute instance
+			try {
+				attribute = createAttribute(name, parameter, binderFactory, webRequest);
+			}
+			catch (BindException ex) {
+				...
+			}
+		}
+
+		if (bindingResult == null) {
+			// Bean property binding and validation;
+			// skipped in case of binding failure on construction.
+			WebDataBinder binder = binderFactory.createBinder(webRequest, attribute, name);
+			if (binder.getTarget() != null) {
+				if (!mavContainer.isBindingDisabled(name)) {
+                    // web数据绑定器，将请求参数的值绑定到指定的JavaBean里面
+					bindRequestParameters(binder, webRequest);
+				}
+				validateIfApplicable(binder, parameter);
+				if (binder.getBindingResult().hasErrors() && isBindExceptionRequired(binder, parameter)) {
+					throw new BindException(binder.getBindingResult());
+				}
+			}
+			// Value type adaptation, also covering java.util.Optional
+			if (!parameter.getParameterType().isInstance(attribute)) {
+				attribute = binder.convertIfNecessary(binder.getTarget(), parameter.getParameterType(), parameter);
+			}
+			bindingResult = binder.getBindingResult();
+		}
+
+		// Add resolved attribute and BindingResult at the end of the model
+		Map<String, Object> bindingResultModel = bindingResult.getModel();
+		mavContainer.removeAttributes(bindingResultModel);
+		mavContainer.addAllAttributes(bindingResultModel);
+
+		return attribute;
+	}
+}
+```
+
+**在过程当中，用到GenericConversionService：在设置每一个值的时候，找它里面的所有converter那个可以将这个数据类型（request带来参数的字符串）转换到指定的类型**
+
+<img src="SpringBoot2基础上篇.assets/image-20220731201407767.png" alt="image-20220731201407767" style="zoom:80%;float:left" />
+
+## 五、自定义Converter原理
+
+未来我们可以给WebDataBinder里面放自己的Converter；
+
+**private static final class** StringToNumber<T **extends** Number> **implements** Converter<String, T>
