@@ -41,6 +41,228 @@ BeanFactory 的子接口，提供了更多高级特性。面向 Spring 的使用
 | ConfigurableApplicationContext  | ApplicationContext 的子接口，包含一些扩展方法 refresh() 和 close() ，让 ApplicationContext 具有启动、 关闭和刷新上下文的能力。 |
 | WebApplicationContext           | 专门为 Web 应用准备，基于 Web 环境创建 IOC 容器对象，并将对象引入存入 ServletContext 域中。 |
 
+### 1.2、@Autowired工作流程
+
+![image-20220802175505518](SpringBoot2基础上篇.assets/image-20220802175505518.png)
+
+* 首先根据所需要的组件类型到IOC容器中查找
+  * 能够找到唯一的bean：直接执行装配
+  * 如果完全找不到匹配这个类型的bean：装配失败
+  * 和所需类型匹配的bean不止一个
+    * 没有@Qualifier注解：根据@Autowired标记位置成员变量的变量名作为bean的id进行匹配
+      * 能够找到：执行装配
+      * 找不到：装配失败
+    * 使用@Qualifier注解：根据@Qualifier注解中指定的名称作为bean的id进行匹配
+      * 能够找到：执行装配
+      * 找不到：装配失败
+
+> @Autowired中有属性required，默认值为true，因此在自动装配无法找到相应的bean时，会装配失败 
+>
+> 可以将属性required的值设置为true，则表示能装就装，装不上就不装，此时自动装配的属性为默认值 
+>
+> 但是实际开发时，基本上所有需要装配组件的地方都是必须装配的，用不上这个属性。
+
+## 二、AOP
+
+### 2.1、AOP概念及相关术语
+
+#### 2.1.1、概述
+
+AOP（Aspect Oriented Programming）是一种设计思想，是软件设计领域中的面向切面编程，它是面 向对象编程的一种补充和完善，它以通过预编译方式和运行期动态代理方式实现在不修改源代码的情况 下给程序动态统一添加额外功能的一种技术。
+
+#### 2.1.2、相关术语
+
+**①横切关注点**
+
+从每个方法中抽取出来的同一类非核心业务。在同一个项目中，我们可以使用多个横切关注点对相关方法进行多个不同方面的增强。
+
+![image-20220802201452209](SpringBoot2基础上篇.assets/image-20220802201452209.png)
+
+**②通知**
+
+每一个横切关注点上要做的事情都需要写一个方法来实现，这样的方法就叫通知方法。
+
+* 前置通知：在被代理的目标方法前执行 
+* 返回通知：在被代理的目标方法成功结束后执行（寿终正寝） 
+* 异常通知：在被代理的目标方法异常结束后执行（死于非命） 
+* 后置通知：在被代理的目标方法最终结束后执行（盖棺定论） 
+* 环绕通知：使用try...catch...finally结构围绕整个被代理的目标方法，包括上面四种通知对应的所有位置
+
+![image-20220802202001179](SpringBoot2基础上篇.assets/image-20220802202001179.png)
+
+**③切面**
+
+封装通知方法的类。
+
+![image-20220802202800698](SpringBoot2基础上篇.assets/image-20220802202800698.png)
+
+**④目标**
+
+被代理的目标对象。
+
+**⑤代理**
+
+向目标对象应用通知之后创建的代理对象。
+
+**⑥连接点**
+
+这也是一个纯逻辑概念，不是语法定义的。
+
+把方法排成一排，每一个横切位置看成x轴方向，把方法从上到下执行的顺序看成y轴，x轴和y轴的交叉点就是连接点。
+
+![image-20220802202924388](SpringBoot2基础上篇.assets/image-20220802202924388.png)
+
+**⑦切入点**
+
+定位连接点的方式。 
+
+每个类的方法中都包含多个连接点，所以连接点是类中客观存在的事物（从逻辑上来说）。 
+
+如果把连接点看作数据库中的记录，那么切入点就是查询记录的 SQL 语句。 
+
+Spring 的 AOP 技术可以通过切入点定位到特定的连接点。 
+
+切点通过 org.springframework.aop.Pointcut 接口进行描述，它使用类和方法作为连接点的查询条件。
+
+#### 2.1.3、作用
+
+* 简化代码：把方法中固定位置的重复的代码抽取出来，让被抽取的方法更专注于自己的核心功能， 提高内聚性。 
+* 代码增强：把特定的功能封装到切面类中，看哪里有需要，就往上套，被套用了切面逻辑的方法就被切面给增强了。
+
+### 2.2、基于注解的AOP
+
+#### 2.2.1、技术说明
+
+![image-20220802213459347](SpringBoot2基础上篇.assets/image-20220802213459347.png)
+
+* 动态代理（InvocationHandler）：JDK原生的实现方式，需要被代理的目标类必须实现接口。因为这个技术要求代理对象和目标对象实现同样的接口（兄弟两个拜把子模式）。
+* cglib：通过继承被代理的目标类（认干爹模式）实现代理，所以不需要目标类实现接口。
+* AspectJ：本质上是静态代理，将代理逻辑“织入”被代理的目标类编译得到的字节码文件，所以最 终效果是动态的。weaver就是织入器。Spring只是借用了AspectJ中的注解。
+
+#### 2.2.2、准备工作
+
+**①添加依赖**
+
+在IOC所需依赖基础上再加入下面依赖即可：
+
+```xml
+<dependency>    
+    <groupId>org.springframework.boot</groupId>    
+    <artifactId>spring-boot-starter-aop</artifactId>
+</dependency>
+```
+
+在application.properties中加入配置
+
+```xml
+spring.aop.auto=true
+```
+
+**②准备被代理的目标资源**
+
+接口：
+
+```java
+public interface Calculator {
+    int add(int i, int j);
+    int sub(int i, int j);
+    int mul(int i, int j);
+    int div(int i, int j);
+}
+```
+
+实现类：
+
+```java
+@Component
+public class CalculatorPureImpl implements Calculator {
+    @Override
+    public int add(int i, int j) {
+        int result = i + j;
+        System.out.println("方法内部 result = " + result);
+        return result;
+    }
+    @Override
+    public int sub(int i, int j) {
+        int result = i - j;
+        System.out.println("方法内部 result = " + result);
+        return result;
+    }
+    @Override
+    public int mul(int i, int j) {
+        int result = i * j;
+        System.out.println("方法内部 result = " + result);
+        return result;
+    }
+    @Override
+    public int div(int i, int j) {
+        int result = i / j;
+        System.out.println("方法内部 result = " + result);
+        return result;
+    }
+}
+```
+
+#### 2.2.3、创建切面类并配置
+
+```java
+// @Aspect表示这个类是一个切面类
+@Aspect
+// @Component注解保证这个切面类能够放入IOC容器
+@Component
+public class LogAspect {
+    @Before("execution(public int com.atguigu.aop.annotation.CalculatorImpl.*(..))")
+    public void beforeMethod(JoinPoint joinPoint){
+        String methodName = joinPoint.getSignature().getName();
+        String args = Arrays.toString(joinPoint.getArgs());
+        System.out.println("Logger-->前置通知，方法名："+methodName+"，参数："+args);
+    }
+    
+    @After("execution(* com.atguigu.aop.annotation.CalculatorImpl.*(..))")
+    public void afterMethod(JoinPoint joinPoint){
+        String methodName = joinPoint.getSignature().getName();
+        System.out.println("Logger-->后置通知，方法名："+methodName);
+    }
+    
+    @AfterReturning(value = "execution(*
+    com.atguigu.aop.annotation.CalculatorImpl.*(..))", returning = "result")
+    public void afterReturningMethod(JoinPoint joinPoint, Object result){
+        String methodName = joinPoint.getSignature().getName();
+        System.out.println("Logger-->返回通知，方法名："+methodName+"，结果："+result);
+    }
+    
+    @AfterThrowing(value = "execution(*
+    com.atguigu.aop.annotation.CalculatorImpl.*(..))", throwing = "ex")
+    public void afterThrowingMethod(JoinPoint joinPoint, Throwable ex){
+        String methodName = joinPoint.getSignature().getName();
+        System.out.println("Logger-->异常通知，方法名："+methodName+"，异常："+ex);
+    }
+    
+    @Around("execution(* com.atguigu.aop.annotation.CalculatorImpl.*(..))")
+    public Object aroundMethod(ProceedingJoinPoint joinPoint){
+        String methodName = joinPoint.getSignature().getName();
+        String args = Arrays.toString(joinPoint.getArgs());
+        Object result = null;
+        try {
+        	System.out.println("环绕通知-->目标对象方法执行之前");
+        	//目标对象（连接点）方法的执行
+        	result = joinPoint.proceed();
+        	System.out.println("环绕通知-->目标对象方法返回值之后");
+        } catch (Throwable throwable) {
+        	throwable.printStackTrace();
+        	System.out.println("环绕通知-->目标对象方法出现异常时");
+        } finally {
+        	System.out.println("环绕通知-->目标对象方法执行完毕");
+        }
+        return result;
+    }
+}
+```
+
+语法格式：
+
+
+
 
 
 # 05、基础入门-SpringBoot-HelloWorld
