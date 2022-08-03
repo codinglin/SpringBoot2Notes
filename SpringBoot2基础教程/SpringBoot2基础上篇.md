@@ -224,15 +224,13 @@ public class LogAspect {
         System.out.println("Logger-->后置通知，方法名："+methodName);
     }
     
-    @AfterReturning(value = "execution(*
-    com.atguigu.aop.annotation.CalculatorImpl.*(..))", returning = "result")
+    @AfterReturning(value = "execution(* com.atguigu.aop.annotation.CalculatorImpl.*(..))", returning = "result")
     public void afterReturningMethod(JoinPoint joinPoint, Object result){
         String methodName = joinPoint.getSignature().getName();
         System.out.println("Logger-->返回通知，方法名："+methodName+"，结果："+result);
     }
     
-    @AfterThrowing(value = "execution(*
-    com.atguigu.aop.annotation.CalculatorImpl.*(..))", throwing = "ex")
+    @AfterThrowing(value = "execution(* com.atguigu.aop.annotation.CalculatorImpl.*(..))", throwing = "ex")
     public void afterThrowingMethod(JoinPoint joinPoint, Throwable ex){
         String methodName = joinPoint.getSignature().getName();
         System.out.println("Logger-->异常通知，方法名："+methodName+"，异常："+ex);
@@ -259,11 +257,408 @@ public class LogAspect {
 }
 ```
 
-语法格式：
+> 各种通知的执行顺序：
+>
+> * 前置通知 
+> * 目标操作 
+> * 返回通知或异常通知 
+> * 后置通知
 
+#### 2.2.4、切入点表达式语法
 
+**①作用**
 
+![image-20220803120131230](SpringBoot2基础上篇.assets/image-20220803120131230.png)
 
+**②语法细节**
+
+* 用*号代替“权限修饰符”和“返回值”部分表示“权限修饰符”和“返回值”不限
+* 在包名的部分，一个“*”号只能代表包的层次结构中的一层，表示这一层是任意的。
+  * 例如：*.Hello匹配com.Hello，不匹配com.atguigu.Hello
+* 在包名的部分，使用“*..”表示包名任意、包的层次深度任意
+* 在类名的部分，类名部分整体用*号代替，表示类名任意
+* 在类名的部分，可以使用*号代替类名的一部分
+  * 例如：*Service匹配所有名称以Service结尾的类或接口
+* 在方法名部分，可以使用*号表示方法名任意
+* 在方法名部分，可以使用*号代替方法名的一部分
+  * 例如：*Operation匹配所有方法名以Operation结尾的方法
+* 在方法参数列表部分，使用(..)表示参数列表任意
+* 在方法参数列表部分，使用(int,..)表示参数列表以一个int类型的参数开头
+* 在方法参数列表部分，基本数据类型和对应的包装类型是不一样的
+  * 切入点表达式中使用 int 和实际方法中 Integer 是不匹配的
+* 在方法返回值部分，如果想要明确指定一个返回值类型，那么必须同时写明权限修饰符
+  * 例如：execution(public int ..Service.*(.., int)) 正确
+  * 例如：execution(* int ..Service.*(.., int)) 错误
+
+![image-20220803120540150](SpringBoot2基础上篇.assets/image-20220803120540150.png)
+
+#### 2.2.5、重用切入点表达式
+
+**①声明**
+
+```java
+@Pointcut("execution(* com.atguigu.aop.annotation.*.*(..))")
+public void pointCut(){}
+```
+
+**②在同一个切面中使用**
+
+```java
+@Before("pointCut()")
+public void beforeMethod(JoinPoint joinPoint){
+    String methodName = joinPoint.getSignature().getName();
+    String args = Arrays.toString(joinPoint.getArgs());
+    System.out.println("Logger-->前置通知，方法名："+methodName+"，参数："+args);
+}
+```
+
+**③在不同切面中使用**
+
+```java
+@Before("com.atguigu.aop.CommonPointCut.pointCut()")
+public void beforeMethod(JoinPoint joinPoint){
+    String methodName = joinPoint.getSignature().getName();
+    String args = Arrays.toString(joinPoint.getArgs());
+    System.out.println("Logger-->前置通知，方法名："+methodName+"，参数："+args);
+}
+```
+
+#### 2.2.6、获取通知的相关信息
+
+**①获取连接点信息**
+
+获取连接点信息可以在通知方法的参数位置设置JoinPoint类型的形参
+
+```java
+@Before("execution(public int com.atguigu.aop.annotation.CalculatorImpl.*(..))")
+public void beforeMethod(JoinPoint joinPoint){
+    //获取连接点的签名信息
+    String methodName = joinPoint.getSignature().getName();
+    //获取目标方法到的实参信息
+    String args = Arrays.toString(joinPoint.getArgs());
+    System.out.println("Logger-->前置通知，方法名："+methodName+"，参数："+args);
+}
+```
+
+**②获取目标方法的返回值**
+
+@AfterReturning中的属性returning，用来将通知方法的某个形参，接收目标方法的返回值
+
+```java
+@AfterReturning(value = "execution(* com.atguigu.aop.annotation.CalculatorImpl.*(..))", returning = "result")
+public void afterReturningMethod(JoinPoint joinPoint, Object result){
+    String methodName = joinPoint.getSignature().getName();
+    System.out.println("Logger-->返回通知，方法名："+methodName+"，结果："+result);
+}
+```
+
+**③获取目标方法的异常**
+
+@AfterThrowing中的属性throwing，用来将通知方法的某个形参，接收目标方法的异常
+
+```java
+@AfterThrowing(value = "execution(* com.atguigu.aop.annotation.CalculatorImpl.*(..))", throwing = "ex")
+public void afterThrowingMethod(JoinPoint joinPoint, Throwable ex){
+    String methodName = joinPoint.getSignature().getName();
+    System.out.println("Logger-->异常通知，方法名："+methodName+"，异常："+ex);
+}
+```
+
+#### 2.2.7、环绕通知
+
+```java
+@Around("execution(* com.atguigu.aop.annotation.CalculatorImpl.*(..))")
+public Object aroundMethod(ProceedingJoinPoint joinPoint){
+    String methodName = joinPoint.getSignature().getName();
+    String args = Arrays.toString(joinPoint.getArgs());
+    Object result = null;
+    try {
+        System.out.println("环绕通知-->目标对象方法执行之前");
+        //目标方法的执行，目标方法的返回值一定要返回给外界调用者
+        result = joinPoint.proceed();
+        System.out.println("环绕通知-->目标对象方法返回值之后");
+    } catch (Throwable throwable) {
+        throwable.printStackTrace();
+        System.out.println("环绕通知-->目标对象方法出现异常时");
+    } finally {
+    	System.out.println("环绕通知-->目标对象方法执行完毕");
+    }
+    return result;
+}
+```
+
+#### 2.2.8、切面的优先级
+
+相同目标方法上同时存在多个切面时，切面的优先级控制切面的内外嵌套顺序。
+
+* 优先级高的切面：外面
+* 优先级低的切面：里面
+
+使用@Order注解可以控制切面的优先级：
+
+* @Order(较小的数)：优先级高
+* @Order(较大的数)：优先级低
+
+## 三、声明式事务
+
+### 3.1、声明式事务概念
+
+#### 3.1.1、编程式事务
+
+事务功能的相关操作全部通过自己编写代码来实现：
+
+```java
+Connection conn = ...;
+try {
+    // 开启事务：关闭事务的自动提交
+    conn.setAutoCommit(false);
+    // 核心操作
+    // 提交事务
+    conn.commit();
+}catch(Exception e){
+    // 回滚事务
+    conn.rollBack();
+}finally{
+    // 释放数据库连接
+    conn.close();
+}
+```
+
+编程式的实现方式存在缺陷：
+
+* 细节没有被屏蔽：具体操作过程中，所有细节都需要程序员自己来完成，比较繁琐。
+* 代码复用性不高：如果没有有效抽取出来，每次实现功能都需要自己编写代码，代码就没有得到复用。
+
+#### 3.1.2、声明式事务
+
+既然事务控制的代码有规律可循，代码的结构基本是确定的，所以框架就可以将固定模式的代码抽取出来，进行相关的封装。
+
+封装起来后，我们只需要在配置文件中进行简单的配置即可完成操作。
+
+### 3.2、基于注解的声明式事务
+
+#### 3.2.1、准备工作
+
+**① 在TransactionalApplication启动类上添加@EnableTransactionManagement注解开启事务：**
+
+```java
+@SpringBootApplication
+//开启事务
+@EnableTransactionManagement
+public class TransactionalApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(TransactionalApplication.class, args);
+    }
+
+}
+```
+
+**② 在Seervice实现方法上添加@Transactional注解**
+
+#### 3.2.2、事务属性
+
+**1. 只读**
+
+对一个查询操作来说，如果我们把它设置成只读，就能够明确告诉数据库，这个操作不涉及写操作。这 样数据库就能够针对查询操作来进行优化。
+
+```java
+@Transactional(readOnly = true)
+public void buyBook(Integer bookId, Integer userId) {
+    //查询图书的价格
+    Integer price = bookDao.getPriceByBookId(bookId);
+    //更新图书的库存
+    bookDao.updateStock(bookId);
+    //更新用户的余额
+    bookDao.updateBalance(userId, price);
+    //System.out.println(1/0);
+}
+```
+
+> 注意：
+>
+> 对增删改操作设置只读会抛出下面异常： Caused by: java.sql.SQLException: Connection is read-only. Queries leading to data modification are not allowed
+
+**2. 超时**
+
+超时回滚，释放资源。
+
+```java
+@Transactional(timeout = 3)
+public void buyBook(Integer bookId, Integer userId) {
+    try {
+    	TimeUnit.SECONDS.sleep(5);
+    } catch (InterruptedException e) {
+    	e.printStackTrace();
+    }
+    //查询图书的价格
+    Integer price = bookDao.getPriceByBookId(bookId);
+    //更新图书的库存
+    bookDao.updateStock(bookId);
+    //更新用户的余额
+    bookDao.updateBalance(userId, price);
+    //System.out.println(1/0);
+}
+```
+
+执行过程中抛出异常： 
+
+org.springframework.transaction.TransactionTimedOutException: Transaction timed out
+
+**3. 回滚策略**
+
+声明式事务默认只针对运行时异常回滚，编译时异常不回滚。 
+
+可以通过@Transactional中相关属性设置回滚策略。
+
+* rollbackFor属性：需要设置一个Class类型的对象
+* rollbackForClassName属性：需要设置一个字符串类型的全类名
+* noRollbackFor属性：需要设置一个Class类型的对象
+* rollbackFor属性：需要设置一个字符串类型的全类名
+
+```java
+@Transactional(noRollbackFor = ArithmeticException.class)
+    //@Transactional(noRollbackForClassName = "java.lang.ArithmeticException")
+    public void buyBook(Integer bookId, Integer userId) {
+    //查询图书的价格
+    Integer price = bookDao.getPriceByBookId(bookId);
+    //更新图书的库存
+    bookDao.updateStock(bookId);
+    //更新用户的余额
+    bookDao.updateBalance(userId, price);
+    System.out.println(1/0);
+}
+```
+
+设置的回滚策略是，当出现ArithmeticException不发生回滚，因此购买图书的操作正常执行
+
+**4. 事务隔离级别**
+
+SQL标准中规定了多种事务隔离级别，不同隔离级别对应不同 的干扰程度，隔离级别越高，数据一致性就越好，但并发性越弱。
+
+隔离级别一共有四种：
+
+* 读未提交：READ UNCOMMITTED
+
+  允许Transaction01读取Transaction02未提交的修改。
+
+* 读已提交：READ COMMITTED
+
+  要求Transaction01只能读取Transaction02已提交的修改。
+
+* 可重复读：REPEATABLE READ
+
+  确保Transaction01可以多次从一个字段中读取到相同的值，即Transaction01执行期间禁止其它事务对这个字段进行更新。
+
+* 串行化：SERIALIZABLE
+
+  确保Transaction01可以多次从一个表中读取到相同的行，在Transaction01执行期间，禁止其它事务对这个表进行添加、更新、删除操作。可以避免任何并发问题，但性能十分低下。
+
+各个隔离级别解决并发问题的能力见下表:
+
+![image-20220803155032654](SpringBoot2基础上篇.assets/image-20220803155032654.png)
+
+各种数据库产品对事务隔离级别的支持程度：
+
+![image-20220803155103368](SpringBoot2基础上篇.assets/image-20220803155103368.png)
+
+使用方式:
+
+```java
+@Transactional(isolation = Isolation.DEFAULT) // 使用数据库默认的隔离级别
+@Transactional(isolation = Isolation.READ_UNCOMMITTED) // 读未提交
+@Transactional(isolation = Isolation.READ_COMMITTED) // 读已提交
+@Transactional(isolation = Isolation.REPEATABLE_READ) // 可重复读
+@Transactional(isolation = Isolation.SERIALIZABLE) // 串行化
+```
+
+**事务传播行为**
+
+当事务方法被另一个事务方法调用时，必须指定事务应该如何传播。例如：方法可能继续在现有事务中运行，也可能开启一个新事务，并在自己的事务中运行。
+
+1. 创建接口CheckoutService
+
+```java
+public interface CheckoutService {
+	void checkout(Integer[] bookIds, Integer userId);
+}
+```
+
+2. 创建实现类CheckoutServiceImpl
+
+```java
+@Service
+public class CheckoutServiceImpl implements CheckoutService {
+    @Autowired
+    private BookService bookService;
+    
+    @Override
+    @Transactional
+    //一次购买多本图书
+    public void checkout(Integer[] bookIds, Integer userId) {
+        for (Integer bookId : bookIds) {
+        	bookService.buyBook(bookId, userId);
+        }
+    }
+}
+```
+
+3. 在BookController中添加方法
+
+```java
+@Autowired
+private CheckoutService checkoutService;
+
+public void checkout(Integer[] bookIds, Integer userId){
+    checkoutService.checkout(bookIds, userId);
+}
+```
+
+在数据库中将用户的余额修改为100元
+
+可以通过@Transactional中的propagation属性设置事务传播行为修改BookServiceImpl中buyBook()上，注解@Transactional的propagation属性
+
+@Transactional(propagation = Propagation.REQUIRED)，默认情况，表示如果当前线程上有已经开启的事务可用，那么就在这个事务中运行。经过观察，购买图书的方法buyBook()在checkout()中被调 用，checkout()上有事务注解，因此在此事务中执行。所购买的两本图书的价格为80和50，而用户的余额为100，因此在购买第二本图书时余额不足失败，导致整个checkout()回滚，即只要有一本书买不了，就都买不了
+
+@Transactional(propagation = Propagation.REQUIRES_NEW)，表示不管当前线程上是否有已经开启的事务，都要开启新事务。同样的场景，每次购买图书都是在buyBook()的事务中执行，因此第一本图书购买成功，事务结束，第二本图书购买失败，只在第二次的buyBook()中回滚，购买第一本图书不受影响，即能买几本就买几本。
+
+> 传播机制类型
+>
+> **PROPAGATION_REQUIRED (默认)**
+>
+> - 支持当前事务，如果当前没有事务，则新建事务
+> - 如果当前存在事务，则加入当前事务，合并成一个事务
+>
+> **REQUIRES_NEW**
+>
+> - 新建事务，如果当前存在事务，则把当前事务挂起
+> - 这个方法会独立提交事务，不受调用者的事务影响，父级异常，它也是正常提交
+>
+> **NESTED**
+>
+> - 如果当前存在事务，它将会成为父级事务的一个子事务，方法结束后并没有提交，只有等父事务结束才提交
+> - 如果当前没有事务，则新建事务
+> - 如果它异常，父级可以捕获它的异常而不进行回滚，正常提交
+> - 但如果父级异常，它必然回滚，这就是和 `REQUIRES_NEW` 的区别
+>
+> **SUPPORTS**
+>
+> - 如果当前存在事务，则加入事务
+> - 如果当前不存在事务，则以非事务方式运行，这个和不写没区别
+>
+> **NOT_SUPPORTED**
+>
+> - 以非事务方式运行
+> - 如果当前存在事务，则把当前事务挂起
+>
+> **MANDATORY**
+>
+> - 如果当前存在事务，则运行在当前事务中
+> - 如果当前无事务，则抛出异常，也即父级方法必须有事务
+>
+> **NEVER**
+>
+> - 以非事务方式运行，如果当前存在事务，则抛出异常，即父级方法必须无事务
 
 # 05、基础入门-SpringBoot-HelloWorld
 
