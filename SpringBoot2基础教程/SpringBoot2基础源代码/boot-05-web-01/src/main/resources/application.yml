@@ -3,5 +3,14 @@ spring:
     hiddenmethod:
       filter:
         enabled: true
+    contentnegotiation:
+      favor-parameter: true
+
 #  mvc:
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
 #    static-path-pattern: /res/**  # 当前项目 + static-path-pattern + 静态资源名 = 静态资源文件夹下找
